@@ -36,6 +36,39 @@ const createYAlignRotation = (targetDirectionVec) => {
   return ecs.math.quat.axisAngle(axisAngle)
 }
 
+const spawnSpheresInArea = (numSpheres, radius, index, centerPos) => {
+  // Use the Fibonacci sphere algorithm for a uniform distribution on a sphere.
+  const segmentCount = numSpheres
+  const offset = 2 / segmentCount
+  const increment = Math.PI * (3 - Math.sqrt(5))
+
+  const y = ((index * offset) - 1) + (offset / 2)
+  const radiusAtY = Math.sqrt(1 - y * y)
+
+  const phi = ((index + 1) % segmentCount) * increment
+
+  const x = Math.cos(phi) * radiusAtY
+  const z = Math.sin(phi) * radiusAtY
+
+  const sphereX = centerPos.x + radius * x
+  const sphereY = centerPos.y + radius * y
+  const sphereZ = centerPos.z + radius * z
+
+  return {sphereX, sphereY, sphereZ}
+}
+
+const spawnSpheresInPlane = (numSpheres, radius, index, centerPos, planeZ) => {
+  const segmentCount = numSpheres
+  const angle = (index / segmentCount) * Math.PI * 2
+  const xOffset = radius * Math.cos(angle)
+  const yOffset = radius * Math.sin(angle)
+  const sphereX = centerPos.x + xOffset
+  const sphereY = centerPos.y + yOffset
+  const sphereZ = planeZ
+
+  return {sphereX, sphereY, sphereZ}
+}
+
 ecs.registerComponent({
   name: 'keep-visible-on-lost',
 
@@ -43,36 +76,14 @@ ecs.registerComponent({
     world.events.addListener(world.events.globalId, 'reality.imagefound', (e) => {
       const centerPos = e.data.position
       const radius = 5
-      const planeZ = centerPos.z
       const segmentCount = 10
 
       if (!sphereEntities.length) {
         // Initial spawn: spheres around Z-axis (circle on XY plane)
         for (let i = 0; i < segmentCount; i++) {
-          //  Spheres around a plane
-          // const angle = (i / segmentCount) * Math.PI * 2
-          // const xOffset = radius * Math.cos(angle)
-          // const yOffset = radius * Math.sin(angle)
-          // const sphereX = centerPos.x + xOffset
-          // const sphereY = centerPos.y + yOffset
-          // const sphereZ = planeZ
-
-          // Use the Fibonacci sphere algorithm for a uniform distribution on a sphere.
-          const offset = 2 / segmentCount
-          const increment = Math.PI * (3 - Math.sqrt(5))
-
-          const y = ((i * offset) - 1) + (offset / 2)
-          const radiusAtY = Math.sqrt(1 - y * y)
-
-          const phi = ((i + 1) % segmentCount) * increment
-
-          const x = Math.cos(phi) * radiusAtY
-          const z = Math.sin(phi) * radiusAtY
-
-          const sphereX = centerPos.x + radius * x
-          const sphereY = centerPos.y + radius * y
-          const sphereZ = centerPos.z + radius * z
-
+          // const spherePos = spawnSpheresInPlane(segmentCount, radius, i, centerPos, centerPos.z)
+          const spherePos = spawnSpheresInArea(segmentCount, radius, i, centerPos)
+          const {sphereX, sphereY, sphereZ} = spherePos
           const sphereEid = world.createEntity()
           sphereEntities.push(sphereEid)
           ecs.SphereGeometry.set(world, sphereEid, {radius: 0.5})
@@ -99,7 +110,7 @@ ecs.registerComponent({
         const height = centerPos.y
         ecs.CylinderGeometry.set(world, imageLineEntity, {radius: 0.005, height})
         ecs.Material.set(world, imageLineEntity, {r: 150, g: 150, b: 150 })
-        ecs.Position.set(world, imageLineEntity, {x: centerPos.x, y: height / 2, z: planeZ})
+        ecs.Position.set(world, imageLineEntity, {x: centerPos.x, y: height / 2, z: centerPos.z})
       } else {
         // TODO restore positions
         console.log("relocalized")
