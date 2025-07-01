@@ -3,7 +3,7 @@ import * as ecs from '@8thwall/ecs'
 const sphereEntities = []
 const lineEntities = []
 const relativeSpherePositions = []
-let imageLineEntity = null
+let planeEntity = null
 
 const createYAlignRotation = (targetDirectionVec) => {
   // The default orientation of a cylinder's height is along the Y-axis.
@@ -54,7 +54,7 @@ const sphereInAreaParams = (numSpheres, radius, index) => {
 
   const sphereX = radius * x
   const sphereY = radius * y
-  const sphereZ = radius * z
+  const sphereZ = -Math.abs(radius * z)
 
   return {sphereX, sphereY, sphereZ}
 }
@@ -88,8 +88,12 @@ ecs.registerComponent({
   add: (world, component) => {
     world.events.addListener(world.events.globalId, 'reality.imagefound', (e) => {
       const centerPos = e.data.position
-      const radius = 5
+      const scaleWidth = e.data.scaleWidth
+      const scaleHeight = e.data.scaleHeight
+      const radius = 10
       const segmentCount = 10
+      const zOffset = 5
+      console.log(e.data)
 
       if (!sphereEntities.length) {
         // Initial spawn: spheres around Z-axis (circle on XY plane)
@@ -97,7 +101,7 @@ ecs.registerComponent({
           const relativePos = sphereInAreaParams(segmentCount, radius, i)
           const sphereX =  centerPos.x + relativePos.sphereX
           const sphereY =  centerPos.y + relativePos.sphereY
-          const sphereZ =  centerPos.z + relativePos.sphereZ
+          const sphereZ =  centerPos.z + relativePos.sphereZ - zOffset
           relativeSpherePositions.push(relativePos)
           const sphereEid = world.createEntity()
           sphereEntities.push(sphereEid)
@@ -117,19 +121,21 @@ ecs.registerComponent({
           ecs.Quaternion.set(world, lineEid, rotationQuat)
         }
 
-        // Create vertical line from image center down to floor (y=0)
-        imageLineEntity = world.createEntity()
-        const height = centerPos.y
-        ecs.CylinderGeometry.set(world, imageLineEntity, {radius: 0.005, height})
-        ecs.Material.set(world, imageLineEntity, {r: 150, g: 150, b: 150 })
-        ecs.Position.set(world, imageLineEntity, {x: centerPos.x, y: height / 2, z: centerPos.z})
+        // Create plane entity 
+        planeEntity = world.createEntity()
+        ecs.PlaneGeometry.set(world, planeEntity, { width:1, height: 1})
+        ecs.Position.set(world, planeEntity, {x: centerPos.x, y: centerPos.y, z: centerPos.z})
+        // ecs.Scale.set(world, planeEntity, {x: scaleWidth, y: scaleHeight, z: 1})
+
+        // Set the unlit material with the specified texture
+        ecs.Material.set(world, planeEntity, {r: 255, g: 255, b: 255, roughness: 1, textureSrc: 'https://raw.githubusercontent.com/anuzk13/Docent-Tracking/refs/heads/master/IMG_2227.png'})
       } else {
         // Restore positions
         sphereEntities.forEach((sphereEid, i) => {
           const relativePos = relativeSpherePositions[i]
           const sphereX =  centerPos.x + relativePos.sphereX
           const sphereY =  centerPos.y + relativePos.sphereY
-          const sphereZ =  centerPos.z + relativePos.sphereZ
+          const sphereZ =  centerPos.z + relativePos.sphereZ - zOffset
 
           ecs.Position.set(world, sphereEid, {
             x: sphereX, y: sphereY, z: sphereZ,
@@ -143,9 +149,9 @@ ecs.registerComponent({
           ecs.Quaternion.set(world, lineEid, rotationQuat)
         })
 
-        const height = centerPos.y
-        ecs.Position.set(world, imageLineEntity, {x: centerPos.x, y: height / 2, z: centerPos.z})
-        ecs.CylinderGeometry.set(world, imageLineEntity, {radius: 0.005, height})
+         ecs.PlaneGeometry.set(world, planeEntity, { width: 1, height: 1})
+         ecs.Position.set(world, planeEntity, {x: centerPos.x, y: centerPos.y, z: centerPos.z})
+        //  ecs.Scale.set(world, planeEntity, {x: scaleWidth, y: scaleHeight, z: 1})
       }
     })
   },
