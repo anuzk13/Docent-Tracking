@@ -36,7 +36,7 @@ const createYAlignRotation = (targetDirectionVec) => {
   return ecs.math.quat.axisAngle(axisAngle)
 }
 
-const spawnSpheresInArea = (numSpheres, radius, index, centerPos) => {
+const sphereInAreaParams = (numSpheres, radius, index, centerPos) => {
   // Use the Fibonacci sphere algorithm for a uniform distribution on a sphere.
   const segmentCount = numSpheres
   const offset = 2 / segmentCount
@@ -57,7 +57,7 @@ const spawnSpheresInArea = (numSpheres, radius, index, centerPos) => {
   return {sphereX, sphereY, sphereZ}
 }
 
-const spawnSpheresInPlane = (numSpheres, radius, index, centerPos, planeZ) => {
+const sphereInPlaneParams = (numSpheres, radius, index, centerPos, planeZ) => {
   const segmentCount = numSpheres
   const angle = (index / segmentCount) * Math.PI * 2
   const xOffset = radius * Math.cos(angle)
@@ -67,6 +67,17 @@ const spawnSpheresInPlane = (numSpheres, radius, index, centerPos, planeZ) => {
   const sphereZ = planeZ
 
   return {sphereX, sphereY, sphereZ}
+}
+
+const lineToCenterParams = (spherePos, centerPos) => {
+  const {sphereX, sphereY, sphereZ} = spherePos
+  const spherePosVec = ecs.math.vec3.from({x: sphereX, y: sphereY, z: sphereZ})
+  const centerPosVec = ecs.math.vec3.from(centerPos)
+  const directionVec = spherePosVec.minus(centerPosVec)
+  const height = directionVec.length()
+  const midpoint = centerPosVec.mix(spherePosVec, 0.5)
+  const rotationQuat = createYAlignRotation(directionVec)
+  return {height, midpoint, rotationQuat}
 }
 
 ecs.registerComponent({
@@ -81,8 +92,8 @@ ecs.registerComponent({
       if (!sphereEntities.length) {
         // Initial spawn: spheres around Z-axis (circle on XY plane)
         for (let i = 0; i < segmentCount; i++) {
-          // const spherePos = spawnSpheresInPlane(segmentCount, radius, i, centerPos, centerPos.z)
-          const spherePos = spawnSpheresInArea(segmentCount, radius, i, centerPos)
+          // const spherePos = sphereInPlaneParams(segmentCount, radius, i, centerPos, centerPos.z)
+          const spherePos = sphereInAreaParams(segmentCount, radius, i, centerPos)
           const {sphereX, sphereY, sphereZ} = spherePos
           const sphereEid = world.createEntity()
           sphereEntities.push(sphereEid)
@@ -90,14 +101,10 @@ ecs.registerComponent({
           ecs.Material.set(world, sphereEid, {r: 239, g: 45, b: 94})
           ecs.Position.set(world, sphereEid, {x: sphereX, y: sphereY, z: sphereZ})
 
-          const spherePosVec = ecs.math.vec3.from({x: sphereX, y: sphereY, z: sphereZ})
-          const centerPosVec = ecs.math.vec3.from(centerPos)
-          const directionVec = spherePosVec.minus(centerPosVec)
-          const height = directionVec.length()
-
-          const midpoint = centerPosVec.mix(spherePosVec, 0.5)
-          const rotationQuat = createYAlignRotation(directionVec)
+          
+          const lineParams = lineToCenterParams(spherePos, centerPos)
           const lineEid = world.createEntity()
+          const {height, midpoint, rotationQuat} = lineParams
 
           ecs.CylinderGeometry.set(world, lineEid, {radius: 0.005, height})
           ecs.Material.set(world, lineEid, {r: 150, g: 150, b: 150})
