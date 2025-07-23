@@ -1,9 +1,9 @@
-import * as ecs from '@8thwall/ecs'
+// This is a component file. You can use this file to define a custom component for your project.
+// This component will appear as a custom component in the editor.
 
-const sphereEntities = []
-const lineEntities = []
-const relativeSpherePositions = []
-let planeEntity = null
+import * as ecs from '@8thwall/ecs'  // This is how you access the ecs library.
+
+let rootEntity = null
 
 const createYAlignRotation = (targetDirectionVec) => {
   // The default orientation of a cylinder's height is along the Y-axis.
@@ -21,7 +21,7 @@ const createYAlignRotation = (targetDirectionVec) => {
       // Vectors are opposite. We need a 180-degree rotation. We can rotate around any
       // perpendicular axis; the X-axis is a simple choice.
       const axis = ecs.math.vec3.xyz(1, 0, 0)
-      const axisAngle = axis.scale(Math.PI) // PI radians = 180 degrees
+      const axisAngle = axis.scale(Math.PI)
       return ecs.math.quat.axisAngle(axisAngle)
     }
   }
@@ -59,7 +59,7 @@ const sphereInAreaParams = (numSpheres, radius, index) => {
   return {sphereX, sphereY, sphereZ}
 }
 
-const sphereInPlaneParams = (numSpheres, radius, index, centerPos, planeZ) => {
+const sphereInPlaneParams = (numSpheres, radius, index, planeZ) => {
   const segmentCount = numSpheres
   const angle = (index / segmentCount) * Math.PI * 2
   const xOffset = radius * Math.cos(angle)
@@ -71,10 +71,10 @@ const sphereInPlaneParams = (numSpheres, radius, index, centerPos, planeZ) => {
   return {sphereX, sphereY, sphereZ}
 }
 
-const lineToCenterParams = (spherePos, centerPos) => {
+const lineToCenterParams = (spherePos) => {
   const {sphereX, sphereY, sphereZ} = spherePos
   const spherePosVec = ecs.math.vec3.from({x: sphereX, y: sphereY, z: sphereZ})
-  const centerPosVec = ecs.math.vec3.from(centerPos)
+  const centerPosVec = ecs.math.vec3.from({x: 0, y: 0, z: 0})
   const directionVec = spherePosVec.minus(centerPosVec)
   const height = directionVec.length()
   const midpoint = centerPosVec.mix(spherePosVec, 0.5)
@@ -82,77 +82,70 @@ const lineToCenterParams = (spherePos, centerPos) => {
   return {height, midpoint, rotationQuat}
 }
 
-ecs.registerComponent({
-  name: 'keep-visible-on-lost',
+const addSphereentities = (world) => {
 
+}
+
+ecs.registerComponent({
+  name: 'add-sphere-children',
+  // schema: {
+  // },
+  // schemaDefaults: {
+  // },
+  // data: {
+  // },
   add: (world, component) => {
     world.events.addListener(world.events.globalId, 'reality.imagefound', (e) => {
-      const centerPos = e.data.position
-      const scaleWidth = e.data.scaleWidth
-      const scaleHeight = e.data.scaleHeight
-      const radius = 10
-      const segmentCount = 10
-      const zOffset = 5
-      // console.log(e.data)
+      if (!rootEntity) {
+        rootEntity = world.createEntity()
+        const transformM =  world.transform.getWorldTransform(component.eid)
+        world.transform.setWorldTransform(rootEntity, transformM)
 
-      if (!sphereEntities.length) {
-        // Initial spawn: spheres around Z-axis (circle on XY plane)
+        // const sphereEid = world.createEntity()
+        // ecs.SphereGeometry.set(world, sphereEid, {radius: 0.5})
+        // ecs.Material.set(world, sphereEid, {r: 239, g: 45, b: 94})
+        // ecs.Position.set(world, sphereEid, {x: 0, y: 0, z: 0})
+
+        // world.setParent(sphereEid, rootEntity)
+
+        const radius = 10
+        const segmentCount = 10
+        const zOffset = 5
+
         for (let i = 0; i < segmentCount; i++) {
           const relativePos = sphereInAreaParams(segmentCount, radius, i)
-          const sphereX =  centerPos.x + relativePos.sphereX
-          const sphereY =  centerPos.y + relativePos.sphereY
-          const sphereZ =  centerPos.z + relativePos.sphereZ - zOffset
-          relativeSpherePositions.push(relativePos)
+          const {sphereX, sphereY, sphereZ} = relativePos
+
           const sphereEid = world.createEntity()
-          sphereEntities.push(sphereEid)
           ecs.SphereGeometry.set(world, sphereEid, {radius: 0.5})
           ecs.Material.set(world, sphereEid, {r: 239, g: 45, b: 94})
           ecs.Position.set(world, sphereEid, {x: sphereX, y: sphereY, z: sphereZ})
 
+          world.setParent(sphereEid, rootEntity)
+
           const spherePos = {sphereX, sphereY, sphereZ}
-          const lineParams = lineToCenterParams(spherePos, centerPos)
+          const lineParams = lineToCenterParams(spherePos)
           const lineEid = world.createEntity()
-          lineEntities.push(lineEid)
           const {height, midpoint, rotationQuat} = lineParams
 
           ecs.CylinderGeometry.set(world, lineEid, {radius: 0.005, height})
           ecs.Material.set(world, lineEid, {r: 150, g: 150, b: 150})
           ecs.Position.set(world, lineEid, midpoint)
           ecs.Quaternion.set(world, lineEid, rotationQuat)
+
+          world.setParent(lineEid, rootEntity)
         }
-
-        // Create plane entity 
-        // planeEntity = world.createEntity()
-        // ecs.PlaneGeometry.set(world, planeEntity, { width:1, height: 1})
-        // ecs.Position.set(world, planeEntity, {x: centerPos.x, y: centerPos.y, z: centerPos.z})
-        // ecs.Scale.set(world, planeEntity, {x: scaleWidth, y: scaleHeight, z: 1})
-
-        // Set the unlit material with the specified texture
-        // ecs.Material.set(world, planeEntity, {r: 255, g: 255, b: 255, roughness: 1, textureSrc: 'https://raw.githubusercontent.com/anuzk13/Docent-Tracking/refs/heads/master/IMG_2227.png'})
       } else {
-        // Restore positions
-        sphereEntities.forEach((sphereEid, i) => {
-          const relativePos = relativeSpherePositions[i]
-          const sphereX =  centerPos.x + relativePos.sphereX
-          const sphereY =  centerPos.y + relativePos.sphereY
-          const sphereZ =  centerPos.z + relativePos.sphereZ - zOffset
-
-          ecs.Position.set(world, sphereEid, {
-            x: sphereX, y: sphereY, z: sphereZ,
-          })
-
-          const lineEid = lineEntities[i]
-          const spherePos = {sphereX, sphereY, sphereZ}
-          const lineParams = lineToCenterParams(spherePos, centerPos)
-          const {midpoint, rotationQuat} = lineParams
-          ecs.Position.set(world, lineEid, midpoint)
-          ecs.Quaternion.set(world, lineEid, rotationQuat)
-        })
-
-        //  ecs.PlaneGeometry.set(world, planeEntity, { width: 1, height: 1})
-        //  ecs.Position.set(world, planeEntity, {x: centerPos.x, y: centerPos.y, z: centerPos.z})
-        //  ecs.Scale.set(world, planeEntity, {x: scaleWidth, y: scaleHeight, z: 1})
+        const transformM = world.transform.getWorldTransform(component.eid)
+        world.transform.setWorldTransform(rootEntity, transformM)
       }
     })
   },
+  // tick: (world, component) => {
+  // },
+  // remove: (world, component) => {
+  // },
+  // stateMachine: ({world, eid, schemaAttribute, dataAttribute}) => {
+  //   ecs.defineState('default').initial()
+  // },
 })
