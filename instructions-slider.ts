@@ -3,6 +3,30 @@
 
 import * as ecs from '@8thwall/ecs'
 
+// Helper function to interpolate between two colors
+const interpolateColor = (color1, color2, progress) => {
+  // Convert hex colors to RGB
+  const hex1 = color1.replace('#', '')
+  const hex2 = color2.replace('#', '')
+  
+  const r1 = parseInt(hex1.substring(0, 2), 16)
+  const g1 = parseInt(hex1.substring(2, 4), 16)
+  const b1 = parseInt(hex1.substring(4, 6), 16)
+  
+  const r2 = parseInt(hex2.substring(0, 2), 16)
+  const g2 = parseInt(hex2.substring(2, 4), 16)
+  const b2 = parseInt(hex2.substring(4, 6), 16)
+  
+  // Interpolate RGB values
+  const r = Math.round(r1 + (r2 - r1) * progress)
+  const g = Math.round(g1 + (g2 - g1) * progress)
+  const b = Math.round(b1 + (b2 - b1) * progress)
+  
+  // Convert back to hex
+  const toHex = (n) => n.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
 // Helper function to update UI based on current state and marker status
 const updateUIState = (world, component) => {
   const {buttonEntity, textEntity, buttonEntityText, markerFoundText} = component.schema
@@ -106,7 +130,7 @@ const IntroScreenTimer = ecs.registerComponent({
         dataAttribute.get(eid).currentState = 'idle'
         
         // Wait for button click to start animation
-        const {textEntity, markerFoundText} = schemaAttribute.get(eid)
+        const {textEntity, markerFoundText, buttonEntity} = schemaAttribute.get(eid)
         
         // Check if this entity has a UI component
         if (!ecs.Ui.has(world, eid)) {
@@ -124,6 +148,13 @@ const IntroScreenTimer = ecs.registerComponent({
           cursor.position = 'absolute'
           cursor.top = '0%'
         })
+        
+        // Set initial button color
+        if (buttonEntity && ecs.Ui.has(world, buttonEntity)) {
+          ecs.Ui.mutate(world, buttonEntity, (cursor) => {
+            cursor.backgroundColor = '#004CFF'
+          })
+        }
       })
       .onEvent(ecs.input.UI_CLICK, 'animating', {
         target: eid,
@@ -158,7 +189,9 @@ const IntroScreenTimer = ecs.registerComponent({
         const initialRadius = 0
         const targetRadius = 50
         const initialTop = 0
-        const targetTop = 85
+        const targetTop = 80
+        const initialColor = '#004CFF'
+        const targetColor = '#DEDEDE'
         const easeIn = true
         const easeOut = true
         const animateStep = () => {
@@ -178,12 +211,20 @@ const IntroScreenTimer = ecs.registerComponent({
           // Calculate current values
           const currentRadius = initialRadius + (targetRadius - initialRadius) * easedProgress
           const currentTop = initialTop + (targetTop - initialTop) * easedProgress
+          const currentColor = interpolateColor(initialColor, targetColor, easedProgress)
 
           // Apply the animated values
           ecs.Ui.mutate(world, eid, (cursor) => {
             cursor.borderRadius = currentRadius
             cursor.top = `${currentTop}%`
           })
+          
+          // Apply button color animation
+          if (buttonEntity && ecs.Ui.has(world, buttonEntity)) {
+            ecs.Ui.mutate(world, buttonEntity, (cursor) => {
+              cursor.backgroundColor = currentColor
+            })
+          }
 
           // Continue animation or finish
           if (progress < 1) {
@@ -282,6 +323,8 @@ const IntroScreenTimer = ecs.registerComponent({
         const targetRadius = 0   // Go back to initial state
         const initialTop = 85    // Start from extended state
         const targetTop = 0      // Go back to initial state
+        const initialColor = '#DEDEDE' // Start from changed color
+        const targetColor = '#004CFF'  // Go back to original color
         const easeIn = true
         const easeOut = true
         
@@ -302,12 +345,20 @@ const IntroScreenTimer = ecs.registerComponent({
           // Calculate current values (reversing)
           const currentRadius = initialRadius + (targetRadius - initialRadius) * easedProgress
           const currentTop = initialTop + (targetTop - initialTop) * easedProgress
+          const currentColor = interpolateColor(initialColor, targetColor, easedProgress)
 
           // Apply the animated values
           ecs.Ui.mutate(world, eid, (cursor) => {
             cursor.borderRadius = currentRadius
             cursor.top = `${currentTop}%`
           })
+          
+          // Apply button color animation (reverse)
+          if (buttonEntity && ecs.Ui.has(world, buttonEntity)) {
+            ecs.Ui.mutate(world, buttonEntity, (cursor) => {
+              cursor.backgroundColor = currentColor
+            })
+          }
 
           // Continue animation or finish
           if (progress < 1) {
