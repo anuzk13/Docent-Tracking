@@ -149,10 +149,10 @@ const IntroScreenTimer = ecs.registerComponent({
           cursor.top = '0%'
         })
         
-        // Set initial button color
+        // Set initial button background color to #004CFF
         if (buttonEntity && ecs.Ui.has(world, buttonEntity)) {
           ecs.Ui.mutate(world, buttonEntity, (cursor) => {
-            cursor.backgroundColor = '#004CFF'
+            cursor.background = '#004CFF'
           })
         }
       })
@@ -189,7 +189,7 @@ const IntroScreenTimer = ecs.registerComponent({
         const initialRadius = 0
         const targetRadius = 50
         const initialTop = 0
-        const targetTop = 80
+        const targetTop = 85
         const initialColor = '#004CFF'
         const targetColor = '#DEDEDE'
         const easeIn = true
@@ -222,7 +222,7 @@ const IntroScreenTimer = ecs.registerComponent({
           // Apply button color animation
           if (buttonEntity && ecs.Ui.has(world, buttonEntity)) {
             ecs.Ui.mutate(world, buttonEntity, (cursor) => {
-              cursor.backgroundColor = currentColor
+              cursor.background = currentColor
             })
           }
 
@@ -356,7 +356,7 @@ const IntroScreenTimer = ecs.registerComponent({
           // Apply button color animation (reverse)
           if (buttonEntity && ecs.Ui.has(world, buttonEntity)) {
             ecs.Ui.mutate(world, buttonEntity, (cursor) => {
-              cursor.backgroundColor = currentColor
+              cursor.background = currentColor
             })
           }
 
